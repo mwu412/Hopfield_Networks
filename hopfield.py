@@ -133,7 +133,7 @@ if __name__ == '__main__':
     train_paths = []
     path = current_path+"/train_pics/"
     for i in os.listdir(path):
-        if re.match(r'[0-9a-zA-Z-]*.jp[e]*g',i):
+        if re.match(r'[0-9a-zA-Z-_]*.jp[e]*g',i):
             train_paths.append(path+i)
 
     #Second, you can create a list of sungallses file path
@@ -144,4 +144,5 @@ if __name__ == '__main__':
             test_paths.append(path+i)
 
     #Hopfield network starts!
-    hopfield(train_files=train_paths, test_files=test_paths, theta=0.5,time=20000,size=(100,100),threshold=60, current_path = current_path)
+    hopfield(train_files=train_paths, test_files=test_paths, theta=0.5,time=20000,\
+             size=(200,200),threshold=60, current_path = current_path)
