@@ -5,10 +5,11 @@ import os
 import re
 
 class HopfieldNetwork:
-    def __init__(self, train_files, test_files, theta=0.5, time=1000, \
+    def __init__(self, sync, train_files, test_files, theta=0.5, time=1000, \
                  size=(100,100), threshold=60, current_path=None):
-        print("Importing images and creating weight matrix....")
+
         self.w = np.zeros([size[0]*size[0],size[1]*size[1]])
+        self.sync = sync
         self.train_files = train_files
         self.test_files = test_files
         self.theta = theta
@@ -20,112 +21,93 @@ class HopfieldNetwork:
         # create the weight matrix
         self.create_W()
 
-
         #Import test data
-        count = 0
-        for path in test_files:
-            y = self.readImg2array(file=path,size=size,threshold=threshold)
-            oshape = y.shape
-            # y_img = self.array2img(y)
-            # y_img.show()
-            # print("Imported test data")
+        self.test()
 
-            y_one_dimension = y.flatten()
-            print("Updating...")
-      
-            y_after = self.update(y=y_one_dimension)
-            y_after = y_after.reshape(oshape)
-            if current_path is not None:
-                outfile = current_path+"/after_"+str(count)+".jpeg"
-                after_img = self.array2img(y_after,outFile=outfile)
-                after_img.show()
-            count += 1
 
     def create_W(self):
+        print('Importing train images and building the weight matrix...\n')
         inputs_matrix = np.zeros([len(self.train_files),self.size[0]*self.size[1]])
         i = 0
         for train_file in self.train_files:
             print(train_file)
             x = self.readImg2array(file=train_file, size=self.size, threshold=self.threshold)
-            x_one_dimension = x.flatten()
+            x_one_dimension = x.flatten()  # 2d numpy array to 1d numpy array (ready for input)
             print('Number of nodes = ', len(x_one_dimension))
             inputs_matrix[i] = x_one_dimension
             i += 1
-            # add weights up for each training in put
-        ######## whether to be divided by len(train_files) is a good question
-        self.w = np.dot(np.transpose(inputs_matrix), inputs_matrix)   
-        print("Weight matrix is done!!")
-
-    
-    #convert matrix to a vector (one dimension array)
-    def mat2vec(self, x):
-        m = x.shape[0]*x.shape[1]
-        tmp1 = np.zeros(m)
-
-        c = 0
-        for i in range(x.shape[0]):
-            for j in range(x.shape[1]):
-                tmp1[c] = x[i,j]
-                c +=1
-        return tmp1
+        self.w = np.dot(np.transpose(inputs_matrix), inputs_matrix)/len(self.train_files)   
+        print('Done.')
 
 
-    #Read Image file and convert it to Numpy array
-    def readImg2array(self, file,size, threshold= 145):
-        pilIN = Image.open(file).convert(mode="L")
-        pilIN= pilIN.resize(size)
-        #pilIN.thumbnail(size,Image.ANTIALIAS)
-        imgArray = np.asarray(pilIN,dtype=np.uint8)
+    def test(self):
+        print('Importing test images and updating...')
+        count = 0
+        for path in self.test_files:
+            y = self.readImg2array(file=path,size=self.size,threshold=self.threshold)
+            two_dimension_shape = y.shape
+
+            y_one_dimension = y.flatten()
+      
+            y_after = self.update_sync(y_one_dimension) if self.sync else self.update_async(y_one_dimension)
+            print('Done.')
+            y_after = y_after.reshape(two_dimension_shape)
+            if self.current_path is not None:
+                outfile = self.current_path+"/after_"+str(count)+".jpeg"
+                after_img = self.array2img(y_after,outFile=outfile)
+                print(outfile + ' saved.')
+                after_img.show()
+            count += 1
+        print('All done.')
+
+
+    # image to numpy array (white is 1, black is -1)
+    def readImg2array(self, file, size, threshold= 145):
+        image = Image.open(file).convert(mode="L")  # grey scale (mode “L”)
+        image = image.resize(size)
+        imgArray = np.asarray(image,dtype=np.uint8)  # grey scale: 0~255 (8 bits)
         x = np.zeros(imgArray.shape,dtype=np.float)
+        # grey scale to black & white
         x[imgArray > threshold] = 1
-        x[x==0] = -1
+        x[x == 0] = -1
         return x
 
-    #Convert Numpy array to Image file like Jpeg
+
+    # asynchronous
+    def update_async(self,y):
+        for s in range(self.time):
+            m = len(y)
+            i = random.randint(0,m-1)
+            u = np.dot(self.w[i][:],y) - self.theta
+
+            y[i] = 1 if u>0 else -1
+        
+        return y
+
+
+    # synchronous
+    def update_sync(self,y):
+        for s in range(self.time):  
+            output = np.dot(y, self.w) - self.theta
+            y = np.array([1 if pixel>0 else -1 for pixel in output])
+
+        return y
+
+
+    # turn numpy array back to grey scale image
     def array2img(self, data, outFile = None):
 
-        #data is 1 or -1 matrix
         y = np.zeros(data.shape,dtype=np.uint8)
-        y[data==1] = 255
-        y[data==-1] = 0
+        y[data==1] = 255  # white
+        y[data==-1] = 0  # black
         img = Image.fromarray(y,mode="L")
         if outFile is not None:
             img.save(outFile)
         return img
 
 
-    # asynchronous
-    def update_asyn(self,y):
-        for s in range(self.time):
-            m = len(y)
-            i = random.randint(0,m-1)
-            u = np.dot(self.w[i][:],y) - self.theta
-
-            if u > 0:
-                y[i] = 1
-            elif u < 0:
-                y[i] = -1
-
-        return y
-
-
-    # synchronous
-    def update(self,y):
-        for s in range(self.time):
-        
-            u = np.dot(y, self.w) - self.theta
-
-            if u > 0:
-                y[i] = 1
-            elif u < 0:
-                y[i] = -1
-
-        return y
-
-
-#Main
 if __name__ == '__main__':
-    #First, you can create a list of input file path
+    # list of input file path
     current_path = os.getcwd()
     train_paths = []
     path = current_path+"/train_pics/"
@@ -133,13 +115,14 @@ if __name__ == '__main__':
         if re.match(r'[0-9a-zA-Z-_]*.jp[e]*g',i):
             train_paths.append(path+i)
 
-    #Second, you can create a list of sungallses file path
+    # list of test file path
     test_paths = []
     path = current_path+"/test_pics/"
     for i in os.listdir(path):
         if re.match(r'[0-9a-zA-Z-_]*.jp[e]*g',i):
             test_paths.append(path+i)
 
-    #Hopfield network starts!
-    h = HopfieldNetwork(train_files=train_paths, test_files=test_paths, theta=0.5,time=2000,\
+    # Hopfield network 
+    # choose synchronous or asynchronous
+    h = HopfieldNetwork(sync=False, train_files=train_paths, test_files=test_paths, theta=0.5,time=10000,\
              size=(200,200),threshold=60, current_path = current_path)
