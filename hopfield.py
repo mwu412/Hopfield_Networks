@@ -124,5 +124,5 @@ if __name__ == '__main__':
 
     # Hopfield network 
     # choose synchronous or asynchronous
-    h = HopfieldNetwork(sync=True, train_files=train_paths, test_files=test_paths, theta=0.5,time=1,\
+    h = HopfieldNetwork(sync=False, train_files=train_paths, test_files=test_paths, theta=0.5,time=50000,\
              size=(200,200),threshold=60, current_path = current_path)
