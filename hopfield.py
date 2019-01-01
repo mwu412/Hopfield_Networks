@@ -69,7 +69,7 @@ class HopfieldNetwork:
         x = np.zeros(imgArray.shape,dtype=np.float)
         # grey scale to black & white
         x[imgArray > threshold] = 1
-        x[x == 0] = -1
+        x[imgArray <= threshold] = -1
         return x
 
 
@@ -124,5 +124,5 @@ if __name__ == '__main__':
 
     # Hopfield network 
     # choose synchronous or asynchronous
-    h = HopfieldNetwork(sync=False, train_files=train_paths, test_files=test_paths, theta=0.5,time=10000,\
+    h = HopfieldNetwork(sync=True, train_files=train_paths, test_files=test_paths, theta=0.5,time=1,\
              size=(200,200),threshold=60, current_path = current_path)
